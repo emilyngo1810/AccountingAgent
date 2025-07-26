@@ -5,6 +5,7 @@ import requests
 import io
 import difflib
 import uuid
+import pdfkit  # Add at the top with other imports
 
 # App config
 st.set_page_config(page_title="🧠 Your AI-Powered Financial Accountant", layout="wide")
@@ -106,6 +107,21 @@ def parse_forecast_table(text):
     except:
         return None
 
+def generate_pdf_report(df, commentary, forecast_txt):
+    html = f"""
+    <h1>Financial Report</h1>
+    <h2>Balance Sheet</h2>
+    {df[["Fiscal Year", "Short-Term Liabilities", "Long-Term Liabilities", "Owner's Equity"]].to_html(index=False)}
+    <h2>Income Statement</h2>
+    {df[["Fiscal Year", "Revenue", "Net Profit"]].to_html(index=False)}
+    <h2>AI Commentary</h2>
+    <p>{commentary}</p>
+    <h2>Forecast</h2>
+    <pre>{forecast_txt}</pre>
+    """
+    pdf = pdfkit.from_string(html, False)
+    return pdf
+
 # Upload
 uploaded_file = st.file_uploader("📂 Upload Excel or CSV File", type=["xlsx", "csv"])
 if uploaded_file:
@@ -190,3 +206,10 @@ if uploaded_file:
     config_url = "https://files.bpcontent.cloud/2025/07/02/02/20250702020605-VDMFG1YB.json"
     iframe_url = f"https://cdn.botpress.cloud/webchat/v3.0/shareable.html?configUrl={config_url}&userId={user_id}"
     st.markdown(f"""<iframe src="{iframe_url}" width="100%" height="600" style="border:none;" allow="microphone"></iframe>""", unsafe_allow_html=True)
+
+    # After generating commentary and forecast
+    st.subheader("⬇️ Download Full Report (PDF)")
+    if st.button("Generate PDF Report"):
+        with st.spinner("Generating PDF..."):
+            pdf_bytes = generate_pdf_report(df, ai_commentary_deepseek(df, industry), forecast_txt)
+            st.download_button("Download PDF", pdf_bytes, file_name="financial_report.pdf", mime="application/pdf")
